@@ -59,30 +59,3 @@ export function canyonDotTotals(canyon){
  const b=entries.reduce((n,v)=>n+Math.max(0,Number(v?.b)||0),0);
  return {a,b,net:(a-b)*Math.max(0,Number(canyon.dotUnit)||0)};
 }
-
-// Team dots are recorded independently per hole; disabled dots never affect payout.
-export function canyonDotTotals(canyon){
- if(!canyon?.dotsEnabled)return {a:0,b:0,net:0};
- const entries=Object.values(canyon.holeDots||{});
- const a=entries.reduce((n,v)=>n+Math.max(0,Number(v?.a)||0),0);
- const b=entries.reduce((n,v)=>n+Math.max(0,Number(v?.b)||0),0);
- return {a,b,net:(a-b)*Math.max(0,Number(canyon.dotUnit)||0)};
-}
-
-// Team dots are recorded independently per hole; disabled dots never affect payout.
-export function canyonDotTotals(canyon){
- if(!canyon?.dotsEnabled)return {a:0,b:0,net:0};
- const entries=Object.values(canyon.holeDots||{});
- const a=entries.reduce((n,v)=>n+Math.max(0,Number(v?.a)||0),0);
- const b=entries.reduce((n,v)=>n+Math.max(0,Number(v?.b)||0),0);
- return {a,b,net:(a-b)*Math.max(0,Number(canyon.dotUnit)||0)};
-}
-
-// Team dots are recorded independently per hole; disabled dots never affect payout.
-export function canyonDotTotals(canyon){
- if(!canyon?.dotsEnabled)return {a:0,b:0,net:0};
- const entries=Object.values(canyon.holeDots||{});
- const a=entries.reduce((n,v)=>n+Math.max(0,Number(v?.a)||0),0);
- const b=entries.reduce((n,v)=>n+Math.max(0,Number(v?.b)||0),0);
- return {a,b,net:(a-b)*Math.max(0,Number(canyon.dotUnit)||0)};
-}
