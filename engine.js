@@ -69,3 +69,14 @@ export function grossSkins(round,playerIds=round.players.map(p=>p.id)){
  if(winners.length===1){result[winners[0].id]+=carry+1;carry=0}else carry++;
  }return {result,carry,completed};
 }
+
+// Net skins use each player's course handicap and the hole stroke index.
+export function netSkins(round,playerIds=round.players.map(p=>p.id)){
+ const result=Object.fromEntries(playerIds.map(id=>[id,0]));let carry=0,completed=0;
+ for(const h of round.holes){
+  const values=playerIds.map(id=>{const p=round.players.find(x=>x.id===id);const gross=round.scores[id]?.[h.number];return {id,score:gross==null||!p?null:netAt(gross,handicap(p,round),h.stroke)}});
+  if(values.length<2||values.some(v=>v.score==null))continue;completed++;
+  const low=Math.min(...values.map(v=>v.score)),winners=values.filter(v=>v.score===low);
+  if(winners.length===1){result[winners[0].id]+=carry+1;carry=0}else carry++;
+ }return {result,carry,completed};
+}
