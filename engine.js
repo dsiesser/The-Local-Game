@@ -8,7 +8,7 @@ export const netAt=(score,hcp,strokeIndex)=>score==null?null:score-strokesAt(hcp
 export function totals(round,p){let gross=0,net=0,played=0,points=0; for(const h of round.holes){const s=round.scores[p.id]?.[h.number];if(s==null)continue;played++;gross+=s;const n=netAt(s,handicap(p,round),h.stroke);net+=n;points+=Math.max(0,2+h.par-n)}return {gross,net,played,points,netToPar:net-round.holes.filter(h=>round.scores[p.id]?.[h.number]!=null).reduce((v,h)=>v+h.par,0)}}
 export function skins(round){const result=Object.fromEntries(round.players.map(p=>[p.id,0]));let carry=0;let pending=0;for(const h of round.holes){const all=round.players.map(p=>({id:p.id,score:netAt(round.scores[p.id]?.[h.number],handicap(p,round),h.stroke)}));if(all.some(x=>x.score==null))continue;const low=Math.min(...all.map(x=>x.score));const winners=all.filter(x=>x.score===low);if(winners.length===1){result[winners[0].id]+=1+carry;carry=0}else carry++;pending++}return {result,carry,completed:pending}}
 export function nassau(round){if(round.players.length!==2)return null;const [a,b]=round.players;const sections=[[1,9],[10,18],[1,18]];return sections.map(([start,end],i)=>{let diff=0,played=0;for(const h of round.holes.filter(h=>h.number>=start&&h.number<=end)){const x=round.scores[a.id]?.[h.number],y=round.scores[b.id]?.[h.number];if(x==null||y==null)continue;played++;const na=netAt(x,handicap(a,round),h.stroke),nb=netAt(y,handicap(b,round),h.stroke);diff+=Math.sign(nb-na)}return {name:['Front 9','Back 9','Overall'][i],diff,played}})}
-export function makeRound(){return {id:uid(),name:'Saturday Game',course:'Sample Golf Club',tee:'White',slope:132,rating:71.8,par:72,holes:structuredClone(holes),players:structuredClone(samplePlayers),scores:{},games:['stroke','stableford','skins'],createdAt:new Date().toISOString(),commissionerToken:uid()}}
+export function makeRound(){return {id:uid(),name:'Saturday Game',course:'Sample Golf Club',tee:'White',slope:132,rating:71.8,par:72,holes:structuredClone(holes),players:structuredClone(samplePlayers),scores:{},games:['grossSkins'],createdAt:new Date().toISOString(),commissionerToken:uid()}}
 
 // A Nassau unit has its own start/end and match score. Presses are separate matches.
 export function matchUnits(round,aId,bId,presses=[] ,handicaps=null){
@@ -58,4 +58,14 @@ export function canyonDotTotals(canyon){
  const a=entries.reduce((n,v)=>n+Math.max(0,Number(v?.a)||0),0);
  const b=entries.reduce((n,v)=>n+Math.max(0,Number(v?.b)||0),0);
  return {a,b,net:(a-b)*Math.max(0,Number(canyon.dotUnit)||0)};
+}
+
+// Gross skins: all entered players must have a score on a hole; ties carry forward.
+export function grossSkins(round,playerIds=round.players.map(p=>p.id)){
+ const result=Object.fromEntries(playerIds.map(id=>[id,0]));let carry=0,completed=0;
+ for(const h of round.holes){const values=playerIds.map(id=>({id,score:round.scores[id]?.[h.number]}));
+ if(values.length<2||values.some(v=>v.score==null))continue;completed++;
+ const low=Math.min(...values.map(v=>v.score)),winners=values.filter(v=>v.score===low);
+ if(winners.length===1){result[winners[0].id]+=carry+1;carry=0}else carry++;
+ }return {result,carry,completed};
 }
