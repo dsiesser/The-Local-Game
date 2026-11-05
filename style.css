@@ -9,3 +9,5 @@ nav button svg{width:25px;height:25px;}
 .pigeon-switcher{display:flex;gap:8px;overflow-x:auto;padding:12px 0 16px;scroll-snap-type:x proximity;}
 .pigeon-switcher button{flex:0 0 auto;max-width:260px;scroll-snap-align:start;border:1px solid #64748b;border-radius:12px;padding:12px 14px;font-weight:700;}
 .pigeon-switcher button.selected{background:#176b48;color:white;border-color:#176b48;}
+
+.logo svg{width:42px;height:42px;display:block}.round-totals-head,.round-totals-row{display:grid;grid-template-columns:minmax(0,1fr) 72px 72px;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border,#ddd)}.round-totals-head{font-size:12px;font-weight:700;text-transform:uppercase;opacity:.7}.round-totals-head span:not(:first-child),.round-totals-row b{text-align:right}.round-totals-row small{display:block;opacity:.7}
