@@ -22,3 +22,7 @@ nav button svg{width:25px;height:25px;}
 .stats h2.money-loss{color:#c62828!important}
 .stats h2.money-profit{color:#188047!important}
 .stats h2.money-even{color:inherit}
+
+/* v17 handicap labels and stroke allocations */
+.playing-handicap{font-weight:700;white-space:nowrap;color:inherit}
+.match-strokes{margin:5px 0 7px;line-height:1.5;font-size:.82rem}
