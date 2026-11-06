@@ -33,7 +33,7 @@ begin
  -- Reuse the established v9 round-creation routine to retain existing setup logic.
  rid:=public.tlg_create_round(round_name,course_name,tee_name,course_slope,course_rating,course_par,hole_data,commissioner_name);
  insert into public.tlg_commissioner_pins_v13(round_id,last_name,pin_hash)
- values(rid,surname,public.crypt(pin,public.gen_salt('bf',12)));
+ values(rid,surname,extensions.crypt(pin,extensions.gen_salt('bf',12)));
  return rid;
 end $$;
 
@@ -50,7 +50,7 @@ begin
  select * into attempts from public.tlg_commissioner_attempts_v13 where tlg_commissioner_attempts_v13.last_name=surname for update;
  if attempts.blocked_until is not null and attempts.blocked_until>now() then raise exception 'Too many attempts. Try again later'; end if;
  select p.round_id into rid from public.tlg_commissioner_pins_v13 p
- where p.last_name=surname and p.pin_hash=public.crypt(pin,p.pin_hash)
+ where p.last_name=surname and p.pin_hash=extensions.crypt(pin,p.pin_hash)
  order by p.created_at desc limit 1;
  if rid is null then
    update public.tlg_commissioner_attempts_v13
