@@ -69,6 +69,17 @@ function App(){
  async function markAlerts(){setShowAlerts(v=>!v);if(notifications.some(n=>!n.read_at)){await db.rpc('tlg_mark_press_notifications_read',{r:roundId});setNotifications(v=>v.map(n=>({...n,read_at:n.read_at||new Date().toISOString()})))}}
  const visibleGames=games.filter(g=>g.status!=='deleted'&&(allGames||involved(g)));
  const toggleSection=id=>setExpanded(v=>({...v,[id]:!v[id]}));
+ // v18 crash fix: the leaderboard calls toggleCard for each collapsible panel.
+ // Keep this helper inside App so it can access the current expanded state.
+ function toggleCard(id,title,content){
+  const isOpen=expanded[id]!==false;
+  return <section className="panel" key={id}>
+   <button type="button" className="sectiontoggle" aria-expanded={isOpen} onClick={()=>toggleSection(id)}>
+    <strong>{title}</strong><span aria-hidden="true">{isOpen?'−':'+'}</span>
+   </button>
+   {isOpen&&<div className="sectionbody">{content}</div>}
+  </section>;
+ }
  const netMoney=mine?games.filter(g=>g.status==='active'&&involved(g)).reduce((sum,g)=>{const units=gameUnits(g);const amt=payout(units,Number(g.unit),g.sweep).net;const dot=g.kind==='canyon'&&g.dots_enabled?Object.values(g.hole_dots||{}).reduce((v,d)=>v+(Number(d.a)||0)-(Number(d.b)||0),0)*Number(g.dot_unit||0):0;return sum+([g.a,g.c].includes(mine.id)?amt+dot:-amt-dot)},0):0;
  const detailsFor=(p,kind)=>{const rows=[];for(const h of roundModel.holes){const entries=players.map(x=>{const raw=roundModel.scores[x.id]?.[h.number];return {id:x.id,score:raw==null?null:kind==='net'?netAt(raw,handicap({...x,hi:Number(x.hi||0)},roundModel),h.stroke):raw}});if(entries.some(x=>x.score==null))continue;const low=Math.min(...entries.map(x=>x.score));const wins=entries.filter(x=>x.score===low);if(wins.length===1&&wins[0].id===p.id)rows.push(`${kind==='net'?'Net':'Gross'} skin with ${low} on hole #${h.number}`)}return rows};
  async function saveKP(h,playerId){await attempt(async()=>{if(!commissioner)throw Error('Only commissioner can assign KP winners');const next={...kpWinners};if(playerId)next[h]=playerId;else delete next[h];const{error}=await db.from('tlg_rounds').update({kp_winners:next}).eq('id',roundId);if(error)throw error;await reload()})}
