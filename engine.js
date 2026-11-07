@@ -60,26 +60,30 @@ export function canyonDotTotals(canyon){
  return {a,b,net:(a-b)*Math.max(0,Number(canyon.dotUnit)||0)};
 }
 
-// Gross skins: all entered players must have a score on a hole; ties carry forward.
-export function grossSkins(round,playerIds=round.players.map(p=>p.id)){
- const result=Object.fromEntries(playerIds.map(id=>[id,0]));let carry=0,completed=0;
- for(const h of round.holes){const values=playerIds.map(id=>({id,score:round.scores[id]?.[h.number]}));
- if(values.length<2||values.some(v=>v.score==null))continue;completed++;
- const low=Math.min(...values.map(v=>v.score)),winners=values.filter(v=>v.score===low);
- if(winners.length===1){result[winners[0].id]+=1;carry=0}else carry=0;
- }return {result,carry,completed};
-}
-
-// Net skins use each player's course handicap and the hole stroke index.
-export function netSkins(round,playerIds=round.players.map(p=>p.id)){
- const result=Object.fromEntries(playerIds.map(id=>[id,0]));let carry=0,completed=0;
+// Skins are provisional until all rostered players have entered the hole.
+// Ties award no skin, and skins never carry over to another hole.
+export function skinLeaders(round,kind='gross',playerIds=round.players.map(p=>p.id)){
+ const result=Object.fromEntries(playerIds.map(id=>[id,0]));
+ const holes=[];let completed=0;
  for(const h of round.holes){
-  const values=playerIds.map(id=>{const p=round.players.find(x=>x.id===id);const gross=round.scores[id]?.[h.number];return {id,score:gross==null||!p?null:netAt(gross,handicap(p,round),h.stroke)}});
-  if(values.length<2||values.some(v=>v.score==null))continue;completed++;
-  const low=Math.min(...values.map(v=>v.score)),winners=values.filter(v=>v.score===low);
-  if(winners.length===1){result[winners[0].id]+=1;carry=0}else carry=0;
- }return {result,carry,completed};
+  const entries=playerIds.map(id=>{
+   const player=round.players.find(p=>p.id===id);
+   const raw=round.scores[id]?.[h.number];
+   return {id,score:raw==null||!player?null:kind==='net'?netAt(raw,handicap(player,round),h.stroke):raw};
+  });
+  const scored=entries.filter(v=>v.score!=null);
+  const final=playerIds.length>0&&scored.length===playerIds.length;
+  if(final)completed++;
+  const lowest=scored.length?Math.min(...scored.map(v=>v.score)):null;
+  const winners=scored.filter(v=>v.score===lowest);
+  const winner=winners.length===1?winners[0]:null;
+  if(winner)result[winner.id]++;
+  holes.push({hole:h.number,winner,final,entered:scored.length,expected:playerIds.length,tied:winners.length>1});
+ }
+ return {result,carry:0,completed,holes};
 }
+export function grossSkins(round,playerIds=round.players.map(p=>p.id)){return skinLeaders(round,'gross',playerIds)}
+export function netSkins(round,playerIds=round.players.map(p=>p.id)){return skinLeaders(round,'net',playerIds)}
 
 // Match-play Pigeon strokes are relative to the low player, including plus handicaps.
 export function pigeonHandicaps(round,aId,bId){
@@ -89,17 +93,31 @@ export function pigeonHandicaps(round,aId,bId){
  return {[aId]:a-low,[bId]:b-low};
 }
 
-// Four-player stroke play: two net best balls or lowest gross and net from distinct players.
-export function teamStrokePlay(round,players,format='two-net'){
- if(!round||players.length!==4)return {played:0,toPar:0};
- let played=0,toPar=0;
+// Foursome scoring: one format selected by commissioner for the entire round.
+// Each hole is provisional until all four golfers have entered a score.
+export function teamStrokePlay(round,players,format='none'){
+ if(!round||players.length!==4||format==='none')return {played:0,toPar:0,holes:[]};
+ let played=0,toPar=0;const holes=[];
  for(const hole of round.holes){
   const entries=players.map(p=>{const gross=round.scores[p.id]?.[hole.number];return {id:p.id,gross,net:gross==null?null:netAt(gross,handicap(p,round),hole.stroke)}});
-  if(entries.some(x=>x.gross==null))continue;
-  let score;
-  if(format==='gross-net')score=Math.min(...entries.flatMap(a=>entries.filter(b=>b.id!==a.id).map(b=>a.gross+b.net)));
-  else score=entries.map(x=>x.net).sort((a,b)=>a-b).slice(0,2).reduce((a,b)=>a+b,0);
-  toPar+=score-2*hole.par;played++;
+  const complete=entries.every(x=>x.gross!=null);
+  if(!complete)continue;
+  let score,baseline;
+  if(format==='gross-net'){
+   score=Math.min(...entries.flatMap(a=>entries.filter(b=>b.id!==a.id).map(b=>a.gross+b.net)));
+   baseline=2*hole.par;
+  }else if(format==='beast'){
+   const sorted=[...entries].sort((a,b)=>a.net-b.net);
+   const best=sorted[0];
+   const bonus=sorted.slice(1).reduce((sum,x)=>sum+Math.max(0,hole.par-x.net),0);
+   score=best.net-bonus;
+   baseline=hole.par;
+  }else{
+   score=entries.map(x=>x.net).sort((a,b)=>a-b).slice(0,2).reduce((a,b)=>a+b,0);
+   baseline=2*hole.par;
+  }
+  const relative=score-baseline;
+  toPar+=relative;played++;holes.push({hole:hole.number,score,toPar:relative});
  }
- return {played,toPar};
+ return {played,toPar,holes};
 }
