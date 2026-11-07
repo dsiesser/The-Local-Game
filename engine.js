@@ -66,7 +66,7 @@ export function grossSkins(round,playerIds=round.players.map(p=>p.id)){
  for(const h of round.holes){const values=playerIds.map(id=>({id,score:round.scores[id]?.[h.number]}));
  if(values.length<2||values.some(v=>v.score==null))continue;completed++;
  const low=Math.min(...values.map(v=>v.score)),winners=values.filter(v=>v.score===low);
- if(winners.length===1){result[winners[0].id]+=carry+1;carry=0}else carry++;
+ if(winners.length===1){result[winners[0].id]+=1;carry=0}else carry=0;
  }return {result,carry,completed};
 }
 
@@ -77,6 +77,29 @@ export function netSkins(round,playerIds=round.players.map(p=>p.id)){
   const values=playerIds.map(id=>{const p=round.players.find(x=>x.id===id);const gross=round.scores[id]?.[h.number];return {id,score:gross==null||!p?null:netAt(gross,handicap(p,round),h.stroke)}});
   if(values.length<2||values.some(v=>v.score==null))continue;completed++;
   const low=Math.min(...values.map(v=>v.score)),winners=values.filter(v=>v.score===low);
-  if(winners.length===1){result[winners[0].id]+=carry+1;carry=0}else carry++;
+  if(winners.length===1){result[winners[0].id]+=1;carry=0}else carry=0;
  }return {result,carry,completed};
+}
+
+// Match-play Pigeon strokes are relative to the low player, including plus handicaps.
+export function pigeonHandicaps(round,aId,bId){
+ const a=handicap(round.players.find(p=>p.id===aId),round);
+ const b=handicap(round.players.find(p=>p.id===bId),round);
+ const low=Math.min(a,b);
+ return {[aId]:a-low,[bId]:b-low};
+}
+
+// Four-player stroke play: two net best balls or lowest gross and net from distinct players.
+export function teamStrokePlay(round,players,format='two-net'){
+ if(!round||players.length!==4)return {played:0,toPar:0};
+ let played=0,toPar=0;
+ for(const hole of round.holes){
+  const entries=players.map(p=>{const gross=round.scores[p.id]?.[hole.number];return {id:p.id,gross,net:gross==null?null:netAt(gross,handicap(p,round),hole.stroke)}});
+  if(entries.some(x=>x.gross==null))continue;
+  let score;
+  if(format==='gross-net')score=Math.min(...entries.flatMap(a=>entries.filter(b=>b.id!==a.id).map(b=>a.gross+b.net)));
+  else score=entries.map(x=>x.net).sort((a,b)=>a-b).slice(0,2).reduce((a,b)=>a+b,0);
+  toPar+=score-2*hole.par;played++;
+ }
+ return {played,toPar};
 }
