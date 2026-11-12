@@ -1,24 +1,30 @@
-# The Local Game v19 — account migration (staged, NOT live)
-This branch begins the move to permanent golfer accounts. v18.2 stays operational until migration, login, commissioner assignment, and historical round access are tested together.
+# The Local Game v19 — invitation-first access (staged, NOT live)
 
-## Decisions
-- Every golfer registers; unique username and password; verified private email for recovery.
-- Supabase Auth stores password hashes and recovery email. Never store passwords in public tables.
-- `tlg_profiles` stores stable golfer identity and optional manually verified GHIN data.
-- `tlg_round_memberships` ties accounts to rounds; `tlg_players.profile_id` links existing scoring records without replacing their IDs.
-- Account welcome screen will list active/closed memberships; any account can create a round as commissioner.
-- Existing anonymous round participants are NOT auto-claimed by matching names.
-- Guest name-selection must be retired only after account-based join is fully tested.
+## Product decision (revised November 12)
+Regular golfers **must not** register, create passwords, or log in to join a game. Commissioner creates the round, adds players, and shares a private invite. Players open their invite directly, and a durable, device-bound player session allows return to a welcome screen listing their active and past events. Commissioners may use a separate authenticated account for administrative privileges.
 
-## Authentication engineering requirement
-Supabase password sign-in accepts email or phone, **not a username**. A username-only sign-in needs a secure server-side username-to-email resolver with rate limiting and no email disclosure. Do not expose a username/email lookup RPC to clients or put the service-role key in the PWA. The registration form can collect username, email and password with email verification; the final username sign-in flow must be implemented and tested before switching off v18.2.
+## Player experience
+1. Commissioner creates round, chooses existing golfer or adds a new golfer to a permanent golfer directory.
+2. Each player gets a private, high-entropy invite token (not a public name-picker). Token is exchanged server-side for a scoped player session; do not expose service role credentials.
+3. Welcome screen: active/upcoming games, closed/past games, enter game, and optional join by invite.
+4. Return on same device without password using a securely stored, revocable session. New device or lost session requires commissioner to resend invite. Never use name-only lookup as authentication.
+5. Commissioner can attach a known golfer to multiple rounds. Past events persist by permanent golfer identity, with immutable scoring history.
+6. Closed games are read-only for players. Scorekeepers only edit permitted groups; commissioner permissions remain separate.
 
-## Deployment checklist
-1. Back up production and test SQL on a development branch/project.
-2. Apply `supabase/migrations/20261112_v19_accounts_foundation.sql` after review.
-3. Implement and test registration, email verification, recovery, secure username sign-in, and session restoration.
-4. Implement commissioner profile search/invite and account-based round membership.
-5. Test closed-round read-only access, prior scoring, commissioner game creation and RLS.
-6. Only then merge and deploy to production.
+## Security and migration
+- Existing v18.2 remains live until tested. Do not change existing auth/RLS functions or scores during foundation stage.
+- Never link historical player records solely by name. Commissioner must confirm identity before attaching historical events.
+- Do not place reusable invitation secrets in query strings after redemption; remove from URL and avoid leaking via analytics/referrers.
+- Store only hashes of invite/session secrets on the server; expire and rotate invites, support revocation.
+- Rate-limit redemption and avoid exposing other players' private profile details.
+- Existing anonymous Supabase sessions are not themselves proof of a golfer's identity.
+- Backup production before any migration; verify RLS, commissioner and player flows and cross-round history on a test environment.
 
-No SQL in this PR should be run automatically on production.
+## Staged implementation
+1. Add permanent golfer directory and round-to-golfer links (additive migration).
+2. Implement secure invite issuing/redemption and player session restore on a test environment.
+3. Implement welcome dashboard, commissioner roster search, past/closed round views.
+4. Test multi-device, invite resend, revoke, existing v18.2 scores and commissioner controls.
+5. Merge and deploy only after complete end-to-end verification.
+
+The SQL migration in this branch is a **proposal**, not yet applied to production.
