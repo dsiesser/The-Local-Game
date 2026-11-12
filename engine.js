@@ -2,7 +2,7 @@ export const holes = Array.from({length:18},(_,i)=>({number:i+1,par:[4,5,3,4,4,3
 export const samplePlayers=[{id:'p1',name:'Alex',hi:12.4},{id:'p2',name:'Jordan',hi:8.1},{id:'p3',name:'Taylor',hi:16.2},{id:'p4',name:'Casey',hi:4.6}];
 export const uid=()=>crypto.randomUUID();
 export const courseHandicap=(hi,slope,rating,par)=>Math.round(Number(hi)*Number(slope)/113+Number(rating)-Number(par));
-export const handicap=(p,round)=>courseHandicap(p.hi,round.slope,round.rating,round.par);
+export const handicap=(p,round)=>courseHandicap(p.hi,p.tee_slope??round.slope,p.tee_rating??round.rating,p.tee_par??round.par);
 export function strokesAt(hcp,strokeIndex){return Math.floor(hcp/18)+(strokeIndex<=((hcp%18)+18)%18?1:0)}
 export const netAt=(score,hcp,strokeIndex)=>score==null?null:score-strokesAt(hcp,strokeIndex);
 export function totals(round,p){let gross=0,net=0,played=0,points=0; for(const h of round.holes){const s=round.scores[p.id]?.[h.number];if(s==null)continue;played++;gross+=s;const n=netAt(s,handicap(p,round),h.stroke);net+=n;points+=Math.max(0,2+h.par-n)}return {gross,net,played,points,netToPar:net-round.holes.filter(h=>round.scores[p.id]?.[h.number]!=null).reduce((v,h)=>v+h.par,0)}}
