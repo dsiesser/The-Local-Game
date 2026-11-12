@@ -28,3 +28,15 @@ Regular golfers **must not** register, create passwords, or log in to join a gam
 5. Merge and deploy only after complete end-to-end verification.
 
 The SQL migration in this branch is a **proposal**, not yet applied to production.
+
+## Implementation progress
+- [x] Branch-only My Games dashboard UI using `tlg_my_events_v19`.
+- [x] Session-scoped query for existing linked player sessions and commissioner rounds.
+- [x] Closed-round score entry disabled in UI (server-side enforcement still required).
+- [ ] Apply and test dashboard query on a test Supabase project.
+- [ ] Secure individual invite generation and redemption; current v18 name selection remains as fallback.
+- [ ] Cross-device permanent golfer identity and verified past-round association.
+- [ ] Server-side closed-round write protection.
+- [ ] Full end-to-end build, test and production rollout.
+
+**Do not merge yet:** Frontend now depends on `tlg_my_events_v19` RPC, which is not installed in production. No production deployment or database change has been made.
