@@ -121,3 +121,35 @@ export function teamStrokePlay(round,players,format='none'){
  }
  return {played,toPar,holes};
 }
+
+ // Vegas: each team's lower adjusted score is the tens digit. Gross birdies/eagles
+ // trigger flips; an opposing eagle overrides a birdie, and equal triggers cancel.
+export function vegasResults(round,game){
+ const ids=[game.a,game.c,game.b,game.d];
+ const settings={scoring:'net',flip:true,pointCap:20,maxScore:9,doubleBirdie:false,...(game.vegas_settings||{})};
+ const entries=[];let points=0;
+ for(const hole of round.holes){
+  const golfers=ids.map(id=>round.players.find(p=>p.id===id));
+  if(golfers.some(p=>!p))continue;
+  const raw=ids.map(id=>round.scores[id]?.[hole.number]);
+  if(raw.some(x=>x==null))continue;
+  const adjusted=raw.map((s,i)=>{
+   const capped=settings.maxScore==null?Number(s):Math.min(Number(s),Number(settings.maxScore));
+   return settings.scoring==='gross'?capped:netAt(capped,handicap(golfers[i],round),hole.stroke);
+  });
+  const pair=(a,b)=>{const lo=Math.min(a,b),hi=Math.max(a,b);return hi>=10?hi*10+lo:lo*10+hi};
+  const a=pair(adjusted[0],adjusted[1]),b=pair(adjusted[2],adjusted[3]);
+  const trigger=(start)=>Math.max(...raw.slice(start,start+2).map(v=>v<=hole.par-2?2:v===hole.par-1?1:0));
+  const ta=trigger(0),tb=trigger(2);
+  const flipA=Boolean(settings.flip&&tb>ta),flipB=Boolean(settings.flip&&ta>tb);
+  const reverse=(n)=>{const str=String(n);return Number(str.split('').reverse().join(''))};
+  const numberA=flipA?reverse(a):a,numberB=flipB?reverse(b):b;
+  const uncapped=numberB-numberA;
+  const cap=settings.pointCap==null?Infinity:Math.max(0,Number(settings.pointCap));
+  const multiplier=settings.doubleBirdie&&((uncapped>0&&ta>0)||(uncapped<0&&tb>0))?2:1;
+  const diff=Math.sign(uncapped)*Math.min(Math.abs(uncapped)*multiplier,cap);
+  points+=diff;
+  entries.push({hole:hole.number,a:numberA,b:numberB,flipA,flipB,diff,running:points});
+ }
+ return {points,net:points*Number(game.unit||0),holes:entries};
+}
