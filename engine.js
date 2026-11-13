@@ -153,3 +153,31 @@ export function vegasResults(round,game){
  }
  return {points,net:points*Number(game.unit||0),holes:entries};
 }
+
+/** Three-player Nine Point / Nines: 5-3-1, shared positions on ties. */
+export function ninePointResults(round,game){
+ const ids=[game.a,game.b,game.c],options={scoring:'net',birdie711:false,...(game.vegas_settings||{})};
+ const totals=Object.fromEntries(ids.map(id=>[id,0])),holes=[];
+ for(const hole of round.holes){
+  const entries=ids.map(id=>{
+   const player=round.players.find(p=>p.id===id);
+   const gross=round.scores[id]?.[hole.number];
+   if(!player||gross==null)return null;
+   return {id,gross,score:options.scoring==='gross'?Number(gross):netAt(Number(gross),handicap(player,round),hole.stroke)};
+  });
+  if(entries.some(x=>!x))continue;
+  entries.sort((a,b)=>a.score-b.score);
+  const points={};
+  if(entries[0].score===entries[2].score)entries.forEach(x=>points[x.id]=3);
+  else if(entries[0].score===entries[1].score){points[entries[0].id]=4;points[entries[1].id]=4;points[entries[2].id]=1;}
+  else if(entries[1].score===entries[2].score){points[entries[0].id]=5;points[entries[1].id]=2;points[entries[2].id]=2;}
+  else {points[entries[0].id]=5;points[entries[1].id]=3;points[entries[2].id]=1;}
+  if(options.birdie711&&entries[0].score<entries[1].score&&entries[0].score<=hole.par-1){
+   points[entries[0].id]=7;points[entries[1].id]=1;points[entries[2].id]=1;
+  }
+  ids.forEach(id=>totals[id]+=points[id]);
+  holes.push({hole:hole.number,points,totals:{...totals}});
+ }
+ const money=Object.fromEntries(ids.map(id=>[id,ids.filter(other=>other!==id).reduce((n,other)=>n+(totals[id]-totals[other])*Number(game.unit||0),0)]));
+ return {totals,money,holes};
+}
